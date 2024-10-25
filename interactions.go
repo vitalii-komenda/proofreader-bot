@@ -5,42 +5,45 @@ import (
 	"log"
 
 	"github.com/slack-go/slack"
-	"github.com/slack-go/slack/socketmode"
 )
 
 func handleInteraction(
 	callback slack.InteractionCallback,
-	client *socketmode.Client,
-	request socketmode.Request,
+	client *slack.Client,
+
 ) error {
 	action := callback.ActionCallback.BlockActions[0]
 	switch action.ActionID {
 	case "approve":
-
-		handleApprove(callback, client, request)
+		handleApprove(callback, client)
 	case "reject":
-		handleReject(callback, client, request)
+		handleReject(callback, client)
 	default:
 		return fmt.Errorf("unknown action: %s", action.ActionID)
 	}
 	return nil
 }
 
-func handleApprove(callback slack.InteractionCallback, client *socketmode.Client, request socketmode.Request) {
-	client.Ack(request)
+func handleApprove(callback slack.InteractionCallback, client *slack.Client) {
+	response := slack.MsgOptionText("copied text", false)
+	token, ok := userTokens.Load(callback.User.ID)
+	if !ok {
+		log.Printf("User token not found for user %s", callback.User.ID)
+		return
+	} else {
 
-	response := slack.MsgOptionText("You approved the message!", false)
-	_, _, err := client.Client.PostMessage(callback.Channel.ID, response)
+		fmt.Printf("User token found for user %s - %s", callback.User.ID, token)
+	}
+	client2 := slack.New(token.(string))
+
+	_, _, err := client2.PostMessage(callback.Channel.ID, response, slack.MsgOptionAsUser(true))
 	if err != nil {
 		log.Printf("Failed to post approval message: %v", err)
 	}
+
 }
 
-func handleReject(callback slack.InteractionCallback, client *socketmode.Client, request socketmode.Request) {
-	client.Ack(request)
-
-	log.Printf("Channel ID: %s, User ID: %s, Response URL: %s", callback.Channel.ID, callback.User.ID, callback.ResponseURL)
-
+func handleReject(callback slack.InteractionCallback, client *slack.Client) {
 	_, err := client.PostEphemeral(
 		callback.Channel.ID,
 		callback.User.ID,
@@ -50,5 +53,4 @@ func handleReject(callback slack.InteractionCallback, client *socketmode.Client,
 	if err != nil {
 		log.Printf("Failed to delete ephemeral message: %v", err)
 	}
-
 }

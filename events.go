@@ -2,15 +2,12 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/slack-go/slack"
-	"github.com/slack-go/slack/slackevents"
-	"github.com/slack-go/slack/socketmode"
 )
 
 type Message struct {
@@ -34,88 +31,56 @@ type ResponseBody struct {
 	Choices []Choice `json:"choices"`
 }
 
-func HandleEvents(ctx context.Context, client *socketmode.Client) {
-	for {
-		select {
-		case <-ctx.Done():
-			log.Println("Shutting down socketmode listener")
+func handleInteractions(w http.ResponseWriter, r *http.Request, client *slack.Client) {
+	var payload slack.InteractionCallback
+	if err := json.Unmarshal([]byte(r.FormValue("payload")), &payload); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	switch payload.Type {
+	case slack.InteractionTypeBlockActions:
+		err := handleInteraction(payload, client)
+		if err != nil {
+			log.Printf("Error handling shortcut: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
 			return
-		case event := <-client.Events:
-			switch event.Type {
-			case socketmode.EventTypeEventsAPI:
-				eventsAPIEvent, ok := event.Data.(slackevents.EventsAPIEvent)
-				if !ok {
-					log.Printf("Could not type cast the event to the EventsAPIEvent: %v\n", event)
-					continue
-				}
-				client.Ack(*event.Request)
-				err := handleEventMessage(eventsAPIEvent, client)
-				if err != nil {
-					log.Printf("Error handling message: %v", err)
-				}
-
-			case socketmode.EventTypeSlashCommand:
-				cmd, ok := event.Data.(slack.SlashCommand)
-				if !ok {
-					log.Printf("Could not type cast the message to a SlashCommand: %v\n", event)
-					continue
-				}
-				client.Ack(*event.Request)
-				err := handleSlashCommand(cmd, client)
-				if err != nil {
-					log.Printf("Error handling slash command: %v", err)
-				}
-
-			case socketmode.EventTypeInteractive:
-				callback, ok := event.Data.(slack.InteractionCallback)
-				if !ok {
-					log.Printf("Could not type cast the message to an InteractionCallback: %v\n", event)
-				}
-				err := handleInteraction(callback, client, *event.Request)
-				if err != nil {
-					log.Printf("Error handling interaction: %v", err)
-				}
-			}
-		}
-	}
-}
-func handleEventMessage(event slackevents.EventsAPIEvent, client *socketmode.Client) error {
-	switch event.Type {
-	case slackevents.CallbackEvent:
-		innerEvent := event.InnerEvent
-		switch ev := innerEvent.Data.(type) {
-		case *slackevents.MessageEvent:
-			if ev.BotID == "" {
-				// Handle only non-bot messages
-				err := handleMessageEvent(ev, client)
-				if err != nil {
-					return fmt.Errorf("error handling message event: %w", err)
-				}
-			}
 		}
 	default:
-		return fmt.Errorf("unsupported event type: %s", event.Type)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-	return nil
 }
 
-func handleMessageEvent(ev *slackevents.MessageEvent, client *socketmode.Client) error {
-	fmt.Printf("Not implemented yet %v", ev)
+func handleSlashCommand(w http.ResponseWriter, r *http.Request, client *slack.Client) {
+	config := parseConfig()
+	s, err := slack.SlashCommandParse(r)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
-	return nil
-}
+	if !s.ValidateToken(config.SlackVerificationToken) {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 
-func handleSlashCommand(cmd slack.SlashCommand, client *socketmode.Client) error {
-	switch cmd.Command {
+	switch s.Command {
 	case "/typosweep":
-		return handleTypoSweep(cmd, client)
+		err := handleTypoSweep(s, client)
+		if err != nil {
+			log.Printf("Error handling slash command: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	default:
-		return fmt.Errorf("unknown command: %s", cmd.Command)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 }
 
-func handleTypoSweep(cmd slack.SlashCommand, client *socketmode.Client) error {
-	_, _, _, err := client.Client.JoinConversation(cmd.ChannelID)
+func handleTypoSweep(cmd slack.SlashCommand, client *slack.Client) error {
+	_, _, _, err := client.JoinConversation(cmd.ChannelID)
 	if err != nil {
 		// If there's an error joining, it might be because we're already in the channel
 		// or it's a DM. We can proceed with posting the message.
@@ -123,7 +88,7 @@ func handleTypoSweep(cmd slack.SlashCommand, client *socketmode.Client) error {
 	}
 
 	if cmd.Text == "" {
-		_, err := client.Client.PostEphemeral(cmd.ChannelID, cmd.UserID, slack.MsgOptionText("Please provide some text to proofread.", false))
+		_, err := client.PostEphemeral(cmd.ChannelID, cmd.UserID, slack.MsgOptionText("Please provide some text to proofread.", false))
 		if err != nil {
 			return fmt.Errorf("error posting message: %w", err)
 		}
@@ -139,7 +104,7 @@ func handleTypoSweep(cmd slack.SlashCommand, client *socketmode.Client) error {
 
 	blocks := addBlockButtons(response)
 
-	_, err = client.Client.PostEphemeral(cmd.ChannelID, cmd.UserID, slack.MsgOptionBlocks(blocks.
+	_, err = client.PostEphemeral(cmd.ChannelID, cmd.UserID, slack.MsgOptionBlocks(blocks.
 		BlockSet...))
 	if err != nil {
 		return fmt.Errorf("error posting message: %w", err)
