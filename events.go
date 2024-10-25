@@ -53,7 +53,7 @@ func handleInteractions(w http.ResponseWriter, r *http.Request, client *slack.Cl
 }
 
 func handleSlashCommand(w http.ResponseWriter, r *http.Request, client *slack.Client) {
-	config := parseConfig()
+	config := getConfig()
 	s, err := slack.SlashCommandParse(r)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -67,12 +67,15 @@ func handleSlashCommand(w http.ResponseWriter, r *http.Request, client *slack.Cl
 
 	switch s.Command {
 	case "/typosweep":
-		err := handleTypoSweep(s, client)
-		if err != nil {
-			log.Printf("Error handling slash command: %v", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
+		w.WriteHeader(http.StatusOK)
+		go func() {
+			err := handleTypoSweep(s, client)
+			if err != nil {
+				log.Printf("Error handling slash command: %v", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}()
 	default:
 		w.WriteHeader(http.StatusInternalServerError)
 		return

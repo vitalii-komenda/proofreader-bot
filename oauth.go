@@ -4,18 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 
-	// "io"
 	"net/http"
 	"net/url"
-	"sync"
 )
-
-var userTokens = sync.Map{}
 
 func startOAuth(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("OAuth start request received\n")
 
-	config := parseConfig()
+	config := getConfig()
 	authURL := "https://slack.com/oauth/v2/authorize"
 	params := url.Values{}
 	params.Add("client_id", config.SlackClientID)
@@ -38,14 +34,13 @@ func handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userTokens.Store(userID, accessToken)
-	t, _ := userTokens.Load(userID)
-
-	fmt.Fprintf(w, "Access Token: %+v, user: %v", t, userID)
+	storeAccessToken(userID, accessToken)
+	fmt.Printf("Access Token for user: %v\n", userID)
+	fmt.Fprintf(w, "Access Token fetched\n", userID)
 }
 
 func exchangeCodeForToken(code string) (string, string, error) {
-	config := parseConfig()
+	config := getConfig()
 
 	resp, err := http.PostForm("https://slack.com/api/oauth.v2.access", url.Values{
 		"client_id":     {config.SlackClientID},
@@ -57,14 +52,6 @@ func exchangeCodeForToken(code string) (string, string, error) {
 		return "", "", err
 	}
 	defer resp.Body.Close()
-
-	// body, err := io.ReadAll(resp.Body)
-	// if err != nil {
-	// 	return "", "", err
-	// }
-	//
-	// // Print the response body as text
-	// fmt.Printf("Response body: %s\n", string(body))
 
 	var response struct {
 		AccessToken string `json:"access_token"`

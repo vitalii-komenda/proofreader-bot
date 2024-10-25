@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,17 +13,7 @@ import (
 )
 
 var envLoaded = false
-
-type Config struct {
-	SlackBotToken          string
-	SlackAppToken          string
-	SlackClientID          string
-	SlackClientSecret      string
-	SlackRedirectURL       string
-	SlackUserOAuthToken    string
-	SlackSigningSecret     string
-	SlackVerificationToken string
-}
+var db *sql.DB
 
 func initEnv() {
 	if envLoaded {
@@ -43,32 +34,18 @@ func getEnv(key string) string {
 	}
 	return value
 }
-
-func parseConfig() Config {
-	return Config{
-		SlackBotToken:          getEnv("SLACK_BOT_TOKEN"),
-		SlackAppToken:          getEnv("SLACK_APP_TOKEN"),
-		SlackClientID:          getEnv("SLACK_CLIENT_ID"),
-		SlackClientSecret:      getEnv("SLACK_CLIENT_SECRET"),
-		SlackRedirectURL:       getEnv("SLACK_REDIRECT_URL"),
-		SlackUserOAuthToken:    getEnv("SLACK_USER_OAUTH_TOKEN"),
-		SlackSigningSecret:     getEnv("SLACK_SIGNING_SECRET"),
-		SlackVerificationToken: getEnv("SLACK_VERIFICATION_TOKEN"),
-	}
-}
-
 func main() {
-	config := parseConfig()
+	config := getConfig()
+
+	db = initDB(config.ENCRYPTION_KEY)
+	defer db.Close()
+
 	client := slack.New(config.SlackUserOAuthToken, slack.OptionAppLevelToken(config.SlackAppToken))
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	http.HandleFunc("/oauth/start", startOAuth)
 	http.HandleFunc("/oauth/callback", handleOAuthCallback)
-	// http.HandleFunc("/slack/events", func(w http.ResponseWriter, r *http.Request) {
-	// 	handleEvents(w, r, client)
-	// })
-
 	http.HandleFunc("/slack/slash-commands", func(w http.ResponseWriter, r *http.Request) {
 		handleSlashCommand(w, r, client)
 	})

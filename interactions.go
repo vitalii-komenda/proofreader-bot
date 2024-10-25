@@ -15,7 +15,7 @@ func handleInteraction(
 	action := callback.ActionCallback.BlockActions[0]
 	switch action.ActionID {
 	case "approve":
-		handleApprove(callback, client)
+		handleApprove(callback)
 	case "reject":
 		handleReject(callback, client)
 	default:
@@ -24,19 +24,20 @@ func handleInteraction(
 	return nil
 }
 
-func handleApprove(callback slack.InteractionCallback, client *slack.Client) {
+func handleApprove(callback slack.InteractionCallback) {
 	response := slack.MsgOptionText("copied text", false)
-	token, ok := userTokens.Load(callback.User.ID)
-	if !ok {
-		log.Printf("User token not found for user %s", callback.User.ID)
+	token, err := getAccessToken(callback.User.ID)
+
+	if err != nil {
+		log.Printf("User token not found for user %s\n", callback.User.ID)
 		return
 	} else {
 
-		fmt.Printf("User token found for user %s - %s", callback.User.ID, token)
+		fmt.Printf("User token found for user %s\n", callback.User.ID)
 	}
-	client2 := slack.New(token.(string))
+	userClient := slack.New(token)
 
-	_, _, err := client2.PostMessage(callback.Channel.ID, response, slack.MsgOptionAsUser(true))
+	_, _, err = userClient.PostMessage(callback.Channel.ID, response, slack.MsgOptionAsUser(true))
 	if err != nil {
 		log.Printf("Failed to post approval message: %v", err)
 	}
