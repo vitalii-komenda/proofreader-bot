@@ -14,7 +14,7 @@ brew install go
 ### Slack configuration:
 * The app uses sockets. Enable them in the Slack app configuration - Enable Socket Mode
 * Copy SLACK_BOT_TOKEN and SLACK_APP_TOKEN into .env file
-* Create a new command "/typosweep" in Slash Commands section
+* Create a new command "/doublecheck" in Slash Commands section
 * Set the request URL to the server URL (eg https://localhost:3000/slack/events)
 
 #### Scopes

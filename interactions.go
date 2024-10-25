@@ -25,7 +25,14 @@ func handleInteraction(
 }
 
 func handleApprove(callback slack.InteractionCallback) {
-	response := slack.MsgOptionText("copied text", false)
+
+	text, ok := getProofreaded(callback.User.ID, callback.Channel.ID)
+	if !ok {
+		log.Printf("Failed to get proofreaded text")
+		return
+	}
+
+	response := slack.MsgOptionText(text, false)
 	token, err := getAccessToken(callback.User.ID)
 
 	if err != nil {

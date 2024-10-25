@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/slack-go/slack"
 )
@@ -66,10 +67,10 @@ func handleSlashCommand(w http.ResponseWriter, r *http.Request, client *slack.Cl
 	}
 
 	switch s.Command {
-	case "/typosweep":
+	case "/doublecheck":
 		w.WriteHeader(http.StatusOK)
 		go func() {
-			err := handleTypoSweep(s, client)
+			err := handleDoublecheck(s, client)
 			if err != nil {
 				log.Printf("Error handling slash command: %v", err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -82,7 +83,7 @@ func handleSlashCommand(w http.ResponseWriter, r *http.Request, client *slack.Cl
 	}
 }
 
-func handleTypoSweep(cmd slack.SlashCommand, client *slack.Client) error {
+func handleDoublecheck(cmd slack.SlashCommand, client *slack.Client) error {
 	_, _, _, err := client.JoinConversation(cmd.ChannelID)
 	if err != nil {
 		// If there's an error joining, it might be because we're already in the channel
@@ -101,6 +102,11 @@ func handleTypoSweep(cmd slack.SlashCommand, client *slack.Client) error {
 	proofreaded, err := proofreadText(cmd.Text)
 	if err != nil {
 		return fmt.Errorf("error proofreading text: %w", err)
+	}
+
+	if idx := strings.Index(proofreaded, "Proofread"); idx != -1 {
+		onlyProofreaded := proofreaded[idx+len("Proofread: "):]
+		addProofreaded(cmd.UserID, cmd.ChannelID, onlyProofreaded)
 	}
 
 	response := fmt.Sprintf("*Original:* %s\n%s", cmd.Text, proofreaded)
