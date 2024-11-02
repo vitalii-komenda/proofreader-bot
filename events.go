@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -10,27 +9,6 @@ import (
 
 	"github.com/slack-go/slack"
 )
-
-type Message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
-type RequestBody struct {
-	Model       string    `json:"model"`
-	Messages    []Message `json:"messages"`
-	Temperature float64   `json:"temperature"`
-	MaxTokens   int       `json:"max_tokens"`
-	Stream      bool      `json:"stream"`
-}
-
-type Choice struct {
-	Message Message `json:"message"`
-}
-
-type ResponseBody struct {
-	Choices []Choice `json:"choices"`
-}
 
 func handleInteractions(w http.ResponseWriter, r *http.Request, client *slack.Client) {
 	var payload slack.InteractionCallback
@@ -140,53 +118,10 @@ func addBlockButtons(response string) slack.Blocks {
 }
 
 func proofreadText(text string) (string, error) {
-	proofread, err := sendRequest(text)
+	proofread, err := llmInstance.SendRequest(text)
 	if err != nil {
 		log.Printf("Error proofreading text: %v", err)
 		return "Error in proofreading", err
 	}
 	return proofread, nil
-}
-
-func sendRequest(text string) (string, error) {
-	requestBody := RequestBody{
-		Model: "lmstudio-community/Meta-Llama-3.1-8B-Instruct-GGUF",
-		Messages: []Message{
-			{
-				Role: "system",
-				Content: `You are proofreader. Users will be asking to correct the text. Correct them with no explanations. 
-Format like this:
-*Typos*: list of words with a typo
-*Proofread*: $whole_corrected_text`,
-			},
-			{
-				Role:    "user",
-				Content: text,
-			},
-		},
-		Temperature: 0.7,
-		MaxTokens:   -1,
-		Stream:      false,
-	}
-
-	jsonData, err := json.Marshal(requestBody)
-	if err != nil {
-		return "", fmt.Errorf("error marshaling JSON: %v", err)
-	}
-
-	resp, err := http.Post("http://localhost:1234/v1/chat/completions", "application/json", bytes.NewBuffer(jsonData))
-	if err != nil {
-		return "", fmt.Errorf("error sending request: %v", err)
-	}
-	defer resp.Body.Close()
-
-	var responseBody ResponseBody
-	if err := json.NewDecoder(resp.Body).Decode(&responseBody); err != nil {
-		return "", fmt.Errorf("error decoding response: %v", err)
-	}
-
-	if len(responseBody.Choices) > 0 {
-		return responseBody.Choices[0].Message.Content, nil
-	}
-	return "", fmt.Errorf("no choices in response")
 }

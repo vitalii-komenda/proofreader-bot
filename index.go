@@ -6,37 +6,16 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 
-	"github.com/joho/godotenv"
 	"github.com/slack-go/slack"
+	"goslackbot/llm"
 )
 
-var envLoaded = false
 var db *sql.DB
+var llmInstance llm.LLM
 
-func initEnv() {
-	if envLoaded {
-		return
-	}
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-	envLoaded = true
-}
-func getEnv(key string) string {
-	initEnv()
-
-	value := os.Getenv(key)
-	if len(value) == 0 {
-		panic(fmt.Sprintf("Environment variable %s is not set", key))
-	}
-	return value
-}
 func main() {
 	config := getConfig()
-
 	db = initDB(config.ENCRYPTION_KEY)
 	defer db.Close()
 
@@ -44,12 +23,28 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	llmInstance = &llm.LLama{
+		URL:   "http://localhost:1234/v1/chat/completions",
+		Model: "lmstudio-community/Meta-Llama-3.1-8B-Instruct-GGUF",
+		Messages: []llm.Message{
+			{
+				Role: "system",
+				Content: `You are proofreader. Users will be asking to correct the text. Correct them with no explanations. 
+Format like this:
+*Typos*: list of words with a typo
+*Proofread*: $whole_corrected_text`,
+			},
+		},
+		Temperature: 0.7,
+		MaxTokens:   -1,
+		Stream:      false,
+	}
+
 	http.HandleFunc("/oauth/start", startOAuth)
 	http.HandleFunc("/oauth/callback", handleOAuthCallback)
 	http.HandleFunc("/slack/slash-commands", func(w http.ResponseWriter, r *http.Request) {
 		handleSlashCommand(w, r, client)
 	})
-
 	http.HandleFunc("/slack/interactions", func(w http.ResponseWriter, r *http.Request) {
 		handleInteractions(w, r, client)
 	})

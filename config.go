@@ -1,5 +1,35 @@
 package main
 
+import (
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/joho/godotenv"
+)
+
+var envLoaded = false
+
+func initEnv() {
+	if envLoaded {
+		return
+	}
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	envLoaded = true
+}
+func getEnv(key string) string {
+	initEnv()
+
+	value := os.Getenv(key)
+	if len(value) == 0 {
+		panic(fmt.Sprintf("Environment variable %s is not set", key))
+	}
+	return value
+}
+
 type Config struct {
 	SlackBotToken          string
 	SlackAppToken          string
