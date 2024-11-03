@@ -30,6 +30,7 @@ func handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 
 	accessToken, userID, err := exchangeCodeForToken(code)
 	if err != nil {
+		fmt.Printf("Failed to get token %v\n", err)
 		http.Error(w, "Failed to get token", http.StatusInternalServerError)
 		return
 	}
@@ -41,8 +42,9 @@ func handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 
 func exchangeCodeForToken(code string) (string, string, error) {
 	config := getConfig()
+	client := &http.Client{}
 
-	resp, err := http.PostForm("https://slack.com/api/oauth.v2.access", url.Values{
+	resp, err := client.PostForm("https://slack.com/api/oauth.v2.access", url.Values{
 		"client_id":     {config.SlackClientID},
 		"client_secret": {config.SlackClientSecret},
 		"code":          {code},

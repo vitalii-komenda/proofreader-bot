@@ -19,12 +19,12 @@ func main() {
 	db = initDB(config.ENCRYPTION_KEY)
 	defer db.Close()
 
-	client := slack.New(config.SlackUserOAuthToken, slack.OptionAppLevelToken(config.SlackAppToken))
+	client := slack.New(config.SlackAppToken)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	model := llm.LLama{}
-	// model := llm.OpenAI{Token: config.OPENAI_API_KEY}
+	// model := llm.LLama{}
+	model := llm.OpenAI{Token: config.OPENAI_API_KEY}
 	llmInstance = llm.Init(&model)
 
 	http.HandleFunc("/oauth/start", startOAuth)
@@ -41,8 +41,8 @@ func main() {
 	})
 
 	go func() {
-		fmt.Println("[INFO] Server listening :3000")
-		log.Fatal(http.ListenAndServe(":3000", nil))
+		fmt.Println("[INFO] Server listening :8080")
+		log.Fatal(http.ListenAndServe(":8080", nil))
 	}()
 
 	<-ctx.Done()
