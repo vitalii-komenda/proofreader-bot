@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 )
 
@@ -49,13 +50,26 @@ func (openai *OpenAI) SendRequest(text string) (string, error) {
 	}
 	defer res.Body.Close()
 
-	var responseBody ResponseBody
-	if err := json.NewDecoder(res.Body).Decode(&responseBody); err != nil {
+	bodyBytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", fmt.Errorf("error reading response body: %v", err)
+	}
+
+	var responseBody map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &responseBody); err != nil {
+		return "", fmt.Errorf("error decoding response: %v", err)
+	}
+	if res.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("error response: %v", responseBody)
+	}
+
+	var parsedResponseBody ResponseBody
+	if err := json.Unmarshal(bodyBytes, &parsedResponseBody); err != nil {
 		return "", fmt.Errorf("error decoding response: %v", err)
 	}
 
-	if len(responseBody.Choices) > 0 {
-		return responseBody.Choices[0].Message.Content, nil
+	if len(parsedResponseBody.Choices) > 0 {
+		return parsedResponseBody.Choices[0].Message.Content, nil
 	}
 	return "", fmt.Errorf("no choices in response")
 }
@@ -68,7 +82,7 @@ func (openai *OpenAI) Init() LLM {
 		openai.Temperature = 0.7
 	}
 	if openai.MaxTokens == 0 {
-		openai.MaxTokens = -1
+		openai.MaxTokens = 1000
 	}
 	if openai.URL == "" {
 		openai.URL = "https://api.openai.com/v1/chat/completions"
