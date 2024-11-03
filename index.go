@@ -23,22 +23,9 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	llmInstance = &llm.LLama{
-		URL:   "http://localhost:1234/v1/chat/completions",
-		Model: "lmstudio-community/Meta-Llama-3.1-8B-Instruct-GGUF",
-		Messages: []llm.Message{
-			{
-				Role: "system",
-				Content: `You are proofreader. Users will be asking to correct the text. Correct them with no explanations. 
-Format like this:
-*Typos*: list of words with a typo
-*Proofread*: $whole_corrected_text`,
-			},
-		},
-		Temperature: 0.7,
-		MaxTokens:   -1,
-		Stream:      false,
-	}
+	model := llm.LLama{}
+	// model := llm.OpenAI{Token: config.OPENAI_API_KEY}
+	llmInstance = llm.Init(&model)
 
 	http.HandleFunc("/oauth/start", startOAuth)
 	http.HandleFunc("/oauth/callback", handleOAuthCallback)
@@ -52,6 +39,7 @@ Format like this:
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Hello, World!")
 	})
+
 	go func() {
 		fmt.Println("[INFO] Server listening :3000")
 		log.Fatal(http.ListenAndServe(":3000", nil))

@@ -7,27 +7,6 @@ import (
 	"net/http"
 )
 
-type Message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
-type RequestBody struct {
-	Model       string    `json:"model"`
-	Messages    []Message `json:"messages"`
-	Temperature float64   `json:"temperature"`
-	MaxTokens   int       `json:"max_tokens"`
-	Stream      bool      `json:"stream"`
-}
-
-type Choice struct {
-	Message Message `json:"message"`
-}
-
-type ResponseBody struct {
-	Choices []Choice `json:"choices"`
-}
-
 type LLama struct {
 	Model       string
 	Temperature float64
@@ -69,4 +48,31 @@ func (llama *LLama) SendRequest(text string) (string, error) {
 		return responseBody.Choices[0].Message.Content, nil
 	}
 	return "", fmt.Errorf("no choices in response")
+}
+
+func (llama *LLama) Init() LLM {
+	if llama.Model == "" {
+		llama.Model = "lmstudio-community/Meta-Llama-3.1-8B-Instruct-GGUF"
+	}
+	if llama.Temperature == 0 {
+		llama.Temperature = 0.7
+	}
+	if llama.MaxTokens == 0 {
+		llama.MaxTokens = -1
+	}
+	if llama.URL == "" {
+		llama.URL = "http://localhost:1234/v1/chat/completions"
+	}
+	if len(llama.Messages) == 0 {
+		llama.Messages = []Message{
+			{
+				Role: "system",
+				Content: `You are proofreader. Users will be asking to correct the text. Correct them with no explanations. 
+Format like this:
+*Typos*: list of words with a typo
+*Proofread*: $whole_corrected_text`,
+			},
+		}
+	}
+	return llama
 }

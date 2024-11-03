@@ -40,6 +40,7 @@ type Config struct {
 	SlackSigningSecret     string
 	SlackVerificationToken string
 	ENCRYPTION_KEY         string
+	OPENAI_API_KEY         string
 }
 
 func getConfig() Config {
@@ -53,5 +54,6 @@ func getConfig() Config {
 		SlackSigningSecret:     getEnv("SLACK_SIGNING_SECRET"),
 		SlackVerificationToken: getEnv("SLACK_VERIFICATION_TOKEN"),
 		ENCRYPTION_KEY:         getEnv("ENCRYPTION_KEY"),
+		OPENAI_API_KEY:         getEnv("OPENAI_API_KEY"),
 	}
 }
