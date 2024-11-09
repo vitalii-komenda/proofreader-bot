@@ -14,12 +14,19 @@ func initEnv() {
 	if envLoaded {
 		return
 	}
-	err := godotenv.Load()
+	var err error
+
+	if len(os.Args) > 1 {
+		err = godotenv.Load(os.Args[1])
+	}
+
+	err = godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
 	envLoaded = true
 }
+
 func getEnv(key string) string {
 	initEnv()
 
@@ -39,12 +46,15 @@ type Config struct {
 	SlackUserOAuthToken    string
 	SlackSigningSecret     string
 	SlackVerificationToken string
-	ENCRYPTION_KEY         string
+	EncryptionKey          string
+	Environment            string
 	OPENAI_API_KEY         string
+	GCP_PROJECT_ID         string
+	PORT                   string
 }
 
 func getConfig() Config {
-	return Config{
+	config := Config{
 		SlackBotToken:          getEnv("SLACK_BOT_TOKEN"),
 		SlackAppToken:          getEnv("SLACK_APP_TOKEN"),
 		SlackClientID:          getEnv("SLACK_CLIENT_ID"),
@@ -53,7 +63,20 @@ func getConfig() Config {
 		SlackUserOAuthToken:    getEnv("SLACK_USER_OAUTH_TOKEN"),
 		SlackSigningSecret:     getEnv("SLACK_SIGNING_SECRET"),
 		SlackVerificationToken: getEnv("SLACK_VERIFICATION_TOKEN"),
-		ENCRYPTION_KEY:         getEnv("ENCRYPTION_KEY"),
-		OPENAI_API_KEY:         getEnv("OPENAI_API_KEY"),
+		EncryptionKey:          getEnv("ENCRYPTION_KEY"),
+		Environment:            getEnv("ENVIRONMENT"),
+		PORT:                   getEnv("PORT"),
+	}
+
+	// Type switch to handle specific configurations
+	switch v := config.Environment; v {
+	case "gcp":
+		config.OPENAI_API_KEY = getEnv("OPENAI_API_KEY")
+		config.GCP_PROJECT_ID = getEnv("GCP_PROJECT_ID")
+		return config
+	case "local":
+		return config
+	default:
+		panic("Unsupported config type")
 	}
 }

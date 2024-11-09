@@ -35,7 +35,7 @@ func handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	storeAccessToken(userID, accessToken)
+	db.StoreAccessToken(userID, accessToken)
 	fmt.Printf("Access Token for user: %v\n", userID)
 	fmt.Fprintf(w, "Access Token fetched\n", userID)
 }

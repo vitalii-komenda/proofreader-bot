@@ -62,7 +62,7 @@ func handleSlashCommand(w http.ResponseWriter, r *http.Request, client *slack.Cl
 }
 
 func handleDoublecheck(cmd slack.SlashCommand, client *slack.Client) error {
-	token, err := getAccessToken(cmd.UserID)
+	token, err := db.GetAccessToken(cmd.UserID)
 	if err != nil {
 		log.Printf("User token not found for user %s\n", cmd.UserID)
 		return nil

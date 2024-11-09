@@ -33,7 +33,7 @@ func handleApprove(callback slack.InteractionCallback) {
 	}
 
 	response := slack.MsgOptionText(text, false)
-	token, err := getAccessToken(callback.User.ID)
+	token, err := db.GetAccessToken(callback.User.ID)
 
 	if err != nil {
 		log.Printf("User token not found for user %s\n", callback.User.ID)
