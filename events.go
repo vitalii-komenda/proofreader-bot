@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/slack-go/slack"
+	"github.com/vitalii-komenda/proofreader-bot/slash-commands"
 )
 
 func handleInteractions(w http.ResponseWriter, r *http.Request, client *slack.Client) {
@@ -46,7 +47,7 @@ func handleSlashCommand(w http.ResponseWriter, r *http.Request, client *slack.Cl
 	case "/doublecheck":
 		w.WriteHeader(http.StatusOK)
 		go func() {
-			err := handleDoublecheck(s, client)
+			err := slashcommands.HandleDoublecheck(s, client, db, llmInstance)
 			if err != nil {
 				log.Printf("Error handling slash command: %v", err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -56,7 +57,7 @@ func handleSlashCommand(w http.ResponseWriter, r *http.Request, client *slack.Cl
 	case "/slangify":
 		w.WriteHeader(http.StatusOK)
 		go func() {
-			err := handleSlangify(s, client)
+			err := slashcommands.HandleSlangify(s, client, db, llmInstance)
 			if err != nil {
 				log.Printf("Error handling slash command: %v", err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -66,22 +67,5 @@ func handleSlashCommand(w http.ResponseWriter, r *http.Request, client *slack.Cl
 	default:
 		w.WriteHeader(http.StatusInternalServerError)
 		return
-	}
-}
-
-func addBlockButtons(response string) slack.Blocks {
-	return slack.Blocks{
-		BlockSet: []slack.Block{
-			slack.NewSectionBlock(
-				slack.NewTextBlockObject("mrkdwn", response, false, false),
-				nil,
-				nil,
-			),
-			slack.NewActionBlock(
-				"",
-				slack.NewButtonBlockElement("approve", "approve", slack.NewTextBlockObject("plain_text", "Send", false, false)),
-				slack.NewButtonBlockElement("reject", "reject", slack.NewTextBlockObject("plain_text", "Delete", false, false)),
-			),
-		},
 	}
 }

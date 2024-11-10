@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/slack-go/slack"
+	slashcommands "github.com/vitalii-komenda/proofreader-bot/slash-commands"
 )
 
 func handleInteraction(
@@ -26,7 +27,7 @@ func handleInteraction(
 
 func handleApprove(callback slack.InteractionCallback) {
 
-	text, ok := getUserText(callback.User.ID, callback.Channel.ID)
+	text, ok := slashcommands.GetUserText(callback.User.ID, callback.Channel.ID)
 	if !ok {
 		log.Printf("Failed to get proofreaded text")
 		return

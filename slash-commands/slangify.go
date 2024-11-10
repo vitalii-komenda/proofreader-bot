@@ -1,4 +1,4 @@
-package main
+package slashcommands
 
 import (
 	"fmt"
@@ -7,9 +7,10 @@ import (
 
 	"github.com/slack-go/slack"
 	"github.com/vitalii-komenda/proofreader-bot/llm"
+	"github.com/vitalii-komenda/proofreader-bot/repository"
 )
 
-func handleDoublecheck(cmd slack.SlashCommand, client *slack.Client) error {
+func HandleSlangify(cmd slack.SlashCommand, client *slack.Client, db repository.AccessToken, llmInstance llm.LLM) error {
 	token, err := db.GetAccessToken(cmd.UserID)
 	if err != nil {
 		log.Printf("User token not found for user %s\n", cmd.UserID)
@@ -26,24 +27,24 @@ func handleDoublecheck(cmd slack.SlashCommand, client *slack.Client) error {
 	}
 
 	if cmd.Text == "" {
-		_, err := client.PostEphemeral(cmd.ChannelID, cmd.UserID, slack.MsgOptionText("Please provide some text to proofread.", false))
+		_, err := client.PostEphemeral(cmd.ChannelID, cmd.UserID, slack.MsgOptionText("Please provide some text to slangify.", false))
 		if err != nil {
 			return fmt.Errorf("error posting message: %w", err)
 		}
 		return nil
 	}
 
-	proofreaded, err := proofreadText(cmd.Text)
+	slangified, err := slangifyText(cmd.Text, llmInstance)
 	if err != nil {
-		return fmt.Errorf("error proofreading text: %w", err)
+		return fmt.Errorf("error slangidy text: %w", err)
 	}
 
-	if idx := strings.Index(proofreaded, "Proofread"); idx != -1 {
-		onlyProofreaded := proofreaded[idx+len("Proofread: "):]
-		cacheUserText(cmd.UserID, cmd.ChannelID, onlyProofreaded)
+	if idx := strings.Index(slangified, "Lowkey"); idx != -1 {
+		onlySlangified := slangified[idx+len("Lowkey: "):]
+		cacheUserText(cmd.UserID, cmd.ChannelID, onlySlangified)
 	}
 
-	response := fmt.Sprintf("*Original:* %s\n%s", cmd.Text, proofreaded)
+	response := fmt.Sprintf("*Original:* %s\n%s", cmd.Text, slangified)
 
 	blocks := addBlockButtons(response)
 
@@ -56,11 +57,11 @@ func handleDoublecheck(cmd slack.SlashCommand, client *slack.Client) error {
 	return nil
 }
 
-func proofreadText(text string) (string, error) {
-	proofread, err := llmInstance.SendRequest(text, llm.Proofreader)
+func slangifyText(text string, llmInstance llm.LLM) (string, error) {
+	proofread, err := llmInstance.SendRequest(text, llm.Slang)
 	if err != nil {
-		log.Printf("Error proofreading text: %v", err)
-		return "Error in proofreading", err
+		log.Printf("Error slangify text: %v", err)
+		return "Error in slangifieing", err
 	}
 	return proofread, nil
 }

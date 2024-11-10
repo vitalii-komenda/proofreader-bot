@@ -1,4 +1,4 @@
-package main
+package slashcommands
 
 import (
 	"sync"
@@ -14,7 +14,7 @@ func removeUserText(userId, channel string) {
 	values.Delete(userId + channel)
 }
 
-func getUserText(userId, channel string) (string, bool) {
+func GetUserText(userId, channel string) (string, bool) {
 	value, ok := values.Load(userId + channel)
 	if !ok {
 		return "", false
