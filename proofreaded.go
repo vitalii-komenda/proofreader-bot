@@ -6,15 +6,15 @@ import (
 
 var values sync.Map
 
-func addProofreaded(userId, channel, text string) {
+func cacheUserText(userId, channel, text string) {
 	values.Store(userId+channel, text)
 }
 
-func removeProofreaded(userId, channel string) {
+func removeUserText(userId, channel string) {
 	values.Delete(userId + channel)
 }
 
-func getProofreaded(userId, channel string) (string, bool) {
+func getUserText(userId, channel string) (string, bool) {
 	value, ok := values.Load(userId + channel)
 	if !ok {
 		return "", false

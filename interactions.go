@@ -26,7 +26,7 @@ func handleInteraction(
 
 func handleApprove(callback slack.InteractionCallback) {
 
-	text, ok := getProofreaded(callback.User.ID, callback.Channel.ID)
+	text, ok := getUserText(callback.User.ID, callback.Channel.ID)
 	if !ok {
 		log.Printf("Failed to get proofreaded text")
 		return

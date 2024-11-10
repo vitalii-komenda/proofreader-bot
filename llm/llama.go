@@ -16,10 +16,10 @@ type LLama struct {
 	URL         string
 }
 
-func (llama *LLama) SendRequest(text string) (string, error) {
+func (llama *LLama) SendRequest(text string, role Role) (string, error) {
 	requestBody := RequestBody{
 		Model: llama.Model,
-		Messages: append(llama.Messages, Message{
+		Messages: append(llama.Messages, Roles[role], Message{
 			Role:    "user",
 			Content: text,
 		}),
@@ -64,15 +64,7 @@ func (llama *LLama) Init() LLM {
 		llama.URL = "http://localhost:1234/v1/chat/completions"
 	}
 	if len(llama.Messages) == 0 {
-		llama.Messages = []Message{
-			{
-				Role: "system",
-				Content: `You are proofreader. Users will be asking to correct the text. Correct them with no explanations. 
-Format like this:
-*Typos*: list of words with a typo
-*Proofread*: $whole_corrected_text`,
-			},
-		}
+		llama.Messages = []Message{}
 	}
 	return llama
 }

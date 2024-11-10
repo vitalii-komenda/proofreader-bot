@@ -18,10 +18,10 @@ type OpenAI struct {
 	Token       string
 }
 
-func (openai *OpenAI) SendRequest(text string) (string, error) {
+func (openai *OpenAI) SendRequest(text string, role Role) (string, error) {
 	requestBody := RequestBody{
 		Model: openai.Model,
-		Messages: append(openai.Messages, Message{
+		Messages: append(openai.Messages, Roles[role], Message{
 			Role:    "user",
 			Content: text,
 		}),
@@ -88,15 +88,7 @@ func (openai *OpenAI) Init() LLM {
 		openai.URL = "https://api.openai.com/v1/chat/completions"
 	}
 	if len(openai.Messages) == 0 {
-		openai.Messages = []Message{
-			{
-				Role: "system",
-				Content: `You are proofreader. Users will be asking to correct the text. Correct them with no explanations. 
-Format like this:
-*Typos*: list of words with a typo
-*Proofread*: $whole_corrected_text`,
-			},
-		}
+		openai.Messages = []Message{}
 	}
 	return openai
 }
