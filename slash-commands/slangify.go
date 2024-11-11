@@ -3,7 +3,6 @@ package slashcommands
 import (
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/slack-go/slack"
 	"github.com/vitalii-komenda/proofreader-bot/llm"
@@ -39,14 +38,15 @@ func HandleSlangify(cmd slack.SlashCommand, client *slack.Client, db repository.
 		return fmt.Errorf("error slangidy text: %w", err)
 	}
 
-	if idx := strings.Index(slangified, "Lowkey"); idx != -1 {
-		onlySlangified := slangified[idx+len("Lowkey: "):]
-		cacheUserText(cmd.UserID, cmd.ChannelID, onlySlangified)
-	}
+	onlySlangified := SeparateProposed(slangified)
+
+	CacheUserText(cmd.UserID, cmd.ChannelID, string(llm.Slang), onlySlangified)
+
+	CacheUserText(cmd.UserID, cmd.ChannelID, string(llm.Slang+"original"), cmd.Text)
 
 	response := fmt.Sprintf("*Original:* %s\n%s", cmd.Text, slangified)
 
-	blocks := addBlockButtons(response)
+	blocks := AddSendDelRephraseButtons(response)
 
 	fmt.Printf("Posting message to channel %s\n", cmd.ChannelID)
 	_, err = client.PostEphemeral(cmd.ChannelID, cmd.UserID, slack.MsgOptionBlocks(blocks.
@@ -64,4 +64,31 @@ func slangifyText(text string, llmInstance llm.LLM) (string, error) {
 		return "Error in slangifieing", err
 	}
 	return proofread, nil
+}
+
+func rephraseText(text string, llmInstance llm.LLM) (string, error) {
+	proofread, err := llmInstance.SendRequest(text, llm.Rephrase)
+	if err != nil {
+		log.Printf("Error rephrasing text: %v", err)
+		return "Error in rephrasing", err
+	}
+	return proofread, nil
+}
+
+func AddSendDelRephraseButtons(response string) slack.Blocks {
+	return slack.Blocks{
+		BlockSet: []slack.Block{
+			slack.NewSectionBlock(
+				slack.NewTextBlockObject("mrkdwn", response, false, false),
+				nil,
+				nil,
+			),
+			slack.NewActionBlock(
+				"",
+				slack.NewButtonBlockElement("approve-slangify", "approve", slack.NewTextBlockObject("plain_text", "Send", false, false)),
+				slack.NewButtonBlockElement("rephrase", "rephrase", slack.NewTextBlockObject("plain_text", "Rephrase", false, false)),
+				slack.NewButtonBlockElement("reject", "reject", slack.NewTextBlockObject("plain_text", "Delete", false, false)),
+			),
+		},
+	}
 }

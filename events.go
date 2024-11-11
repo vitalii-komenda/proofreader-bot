@@ -18,6 +18,7 @@ func handleInteractions(w http.ResponseWriter, r *http.Request, client *slack.Cl
 
 	switch payload.Type {
 	case slack.InteractionTypeBlockActions:
+		w.WriteHeader(http.StatusOK)
 		err := handleInteraction(payload, client)
 		if err != nil {
 			log.Printf("Error handling shortcut: %v", err)

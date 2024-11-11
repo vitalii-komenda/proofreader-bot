@@ -3,8 +3,9 @@ package llm
 type Role string
 
 const (
-	Proofreader Role = "proofreader"
-	Slang       Role = "slang"
+	Proofread Role = "proofread"
+	Slang     Role = "slang"
+	Rephrase  Role = "rephrase"
 )
 
 type LLM interface {
@@ -38,17 +39,27 @@ func Init(l LLM) LLM {
 }
 
 var Roles = map[Role]Message{
-	Proofreader: {
+	Proofread: {
 		Role: "system",
 		Content: `You are proofreader. Users will be asking to correct the text. Correct them with no explanations. 
 Format like this:
 *Typos*: list of words with a typo
-*Proofread*: $whole_corrected_text`,
+*Proposed**: $corrected_text`,
 	},
 	Slang: {
 		Role: "system",
-		Content: `You are bot to make slang version of the text. Users will be asking to make the text more slang. Correct them with no explanations.
+		Content: `You are bot to make slang version of the text. Users will be asking to make the text more slang. Reply with slang version and no explanations.
 Format like this:
-*Lowkey*: $whole_slang_text`,
+*Proposed*: $slang_text
+
+Please strictly follow the format. It should have *Proposed* at the beginning of the message and then slang version.`,
+	},
+	Rephrase: {
+		Role: "system",
+		Content: `You are slang rephraser. Users will be asking to rephrase the text. Correct them with no explanations.
+Format like this:
+*Proposed*: $rephrased_text
+
+Please strictly follow the format. It should have *Proposed* at the beginning of the message and then slang version.`,
 	},
 }

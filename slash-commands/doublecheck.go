@@ -10,6 +10,14 @@ import (
 	"github.com/vitalii-komenda/proofreader-bot/repository"
 )
 
+func SeparateProposed(text string) string {
+	if idx := strings.Index(text, "Proposed"); idx != -1 {
+		return text[idx+len("Proposed: "):]
+	}
+
+	return ""
+}
+
 func HandleDoublecheck(cmd slack.SlashCommand, client *slack.Client, db repository.AccessToken, llmInstance llm.LLM) error {
 	token, err := db.GetAccessToken(cmd.UserID)
 	if err != nil {
@@ -39,14 +47,12 @@ func HandleDoublecheck(cmd slack.SlashCommand, client *slack.Client, db reposito
 		return fmt.Errorf("error proofreading text: %w", err)
 	}
 
-	if idx := strings.Index(proofreaded, "Proofread"); idx != -1 {
-		onlyProofreaded := proofreaded[idx+len("Proofread: "):]
-		cacheUserText(cmd.UserID, cmd.ChannelID, onlyProofreaded)
-	}
+	onlyProofreaded := SeparateProposed(proofreaded)
+	CacheUserText(cmd.UserID, cmd.ChannelID, string(llm.Proofread), onlyProofreaded)
 
 	response := fmt.Sprintf("*Original:* %s\n%s", cmd.Text, proofreaded)
 
-	blocks := addBlockButtons(response)
+	blocks := addSendDelButtons(response)
 
 	fmt.Printf("Posting message to channel %s\n", cmd.ChannelID)
 	_, err = client.PostEphemeral(cmd.ChannelID, cmd.UserID, slack.MsgOptionBlocks(blocks.
@@ -58,7 +64,7 @@ func HandleDoublecheck(cmd slack.SlashCommand, client *slack.Client, db reposito
 }
 
 func proofreadText(text string, llmInstance llm.LLM) (string, error) {
-	proofread, err := llmInstance.SendRequest(text, llm.Proofreader)
+	proofread, err := llmInstance.SendRequest(text, llm.Proofread)
 	if err != nil {
 		log.Printf("Error proofreading text: %v", err)
 		return "Error in proofreading", err
@@ -66,7 +72,7 @@ func proofreadText(text string, llmInstance llm.LLM) (string, error) {
 	return proofread, nil
 }
 
-func addBlockButtons(response string) slack.Blocks {
+func addSendDelButtons(response string) slack.Blocks {
 	return slack.Blocks{
 		BlockSet: []slack.Block{
 			slack.NewSectionBlock(
